@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventory Adjustment</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+
+<style>
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;margin:0;padding:10px;background:#f4f6f8;}
+
+.container{
+background:white;
+padding:14px;
+margin-bottom:12px;
+border-radius:8px;
+box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+h3{margin-top:0}
+
+#searchInput{
+width:100%;
+padding:18px;
+font-size:22px;
+margin-bottom:10px;
+}
+
+button{
+padding:14px 18px;
+font-size:15px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+margin:4px 4px 4px 0;
+}
+
+.primary{background:#3498db;color:white}
+.success{background:#27ae60;color:white}
+.danger{background:#e74c3c;color:white}
+
+#tableContainer{
+width:100%;
+overflow-x:auto;
+max-height:60vh;
+overflow-y:auto;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th,td{
+border:1px solid #ddd;
+padding:6px;
+text-align:center;
+font-size:13px;
+}
+
+th{
+background:#2c3e50;
+color:white;
+}
+
+.actions{
+display:flex;
+justify-content:center;
+gap:4px;
+}
+
+.addBtn{
+background:#27ae60;
+color:white;
+font-size:16px;
+padding:8px 10px;
+}
+
+.lessBtn{
+background:#e74c3c;
+color:white;
+font-size:16px;
+padding:8px 10px;
+}
+
+.okBtn{
+background:#f1c40f;
+color:black;
+font-size:16px;
+padding:8px 10px;
+}
+
+.fileRow{
+display:flex;
+flex-wrap:wrap;
+align-items:center;
+gap:8px;
+}
+
+#fileLabel{font-weight:bold}
+
+.totalRow{
+font-weight:bold;
+font-size:16px;
+margin-top:8px;
+}
+
+.stickyTop{
+position:sticky;
+top:0;
+z-index:5;
+}
+
+@media (max-width:768px){
+th,td{padding:5px;font-size:12px;}
+#searchInput{font-size:20px;}
+button{padding:12px 14px;font-size:14px;}
+}
+
+@media print{
+body *{visibility:hidden;}
+#tableContainer, #tableContainer *{visibility:visible;}
+#tableContainer{position:absolute;left:0;top:0;width:100%;}
+th,td{font-size:10px;padding:4px;}
+}
+
+
+/* Hover effect */
+.tabBtn:hover{
+  color:#e2e8f0;
+  transform:translateY(-1px);
+}
+
+/* Active Tab */
+.tabBtn.active{
+  color:white;
+  background:linear-gradient(135deg,#2563eb,#22c55e);
+  box-shadow:
+    0 0 10px rgba(37,99,235,0.6),
+    0 0 20px rgba(34,197,94,0.4);
+}
+
+/* Glow line animation */
+.tabBtn.active::after{
+  content:"";
+  position:absolute;
+  bottom:-4px;
+  left:10%;
+  width:80%;
+  height:3px;
+  border-radius:2px;
+  background:linear-gradient(90deg,#22c55e,#3b82f6);
+  box-shadow:0 0 8px #22c55e;
+}
+
+/* Mobile polish */
+@media (max-width:768px){
+  .tabBtn{
+    font-size:13px;
+    padding:10px 6px;
+  }
+}
+
+
+/* Top row */
+.headerTop{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+/* Main title */
+.headerTitleMain{
+  font-size:20px;
+  font-weight:700;
+  letter-spacing:0.5px;
+
+  background:linear-gradient(90deg,#38bdf8,#22c55e);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+/* Status badge */
+.headerBadge{
+  font-size:11px;
+  font-weight:bold;
+  padding:4px 10px;
+  border-radius:999px;
+
+  background:linear-gradient(135deg,#22c55e,#4ade80);
+  color:#022c22;
+
+  box-shadow:0 0 10px rgba(34,197,94,0.6);
+}
+
+/* Subtitle */
+.headerSub{
+  margin-top:6px;
+  font-size:12px;
+  color:#94a3b8;
+  letter-spacing:0.3px;
+}
+
+/* Optional glow animation */
+.headerGlass::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:16px;
+  pointer-events:none;
+
+  background:linear-gradient(120deg,transparent,rgba(56,189,248,0.2),transparent);
+  opacity:0.2;
+}
+
+/* ===== TOP BAR (MERGED HEADER + TABS) ===== */
+
+.topBar{
+  position:sticky;
+  top:0;
+  z-index:10;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:10px;
+  border-radius:14px;
+  margin-bottom:10px;
+
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  box-shadow:0 6px 18px rgba(0,0,0,0.4);
+}
+
+/* LEFT TITLE */
+.appTitle{
+  font-weight:700;
+  font-size:16px;
+  color:white;
+  letter-spacing:0.5px;
+}
+
+/* CENTER TABS */
+.topTabs{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+/* STEP ITEM */
+.step{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 10px;
+  border-radius:10px;
+  cursor:pointer;
+  transition:0.25s;
+  color:#94a3b8;
+}
+
+/* CIRCLE */
+.circle{
+  width:22px;
+  height:22px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:50%;
+
+  background:#334155;
+  color:white;
+  font-size:12px;
+  font-weight:bold;
+}
+
+/* LABEL */
+.label{
+  font-size:13px;
+  font-weight:500;
+}
+
+/* ACTIVE STEP */
+.step.active{
+  background:linear-gradient(135deg,#2563eb,#22c55e);
+  color:white;
+  box-shadow:0 0 10px rgba(34,197,94,0.5);
+}
+
+.step.active .circle{
+  background:white;
+  color:#1e293b;
+}
+
+/* RIGHT ICON */
+.avatar{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background:linear-gradient(135deg,#38bdf8,#22c55e);
+  color:#0f172a;
+  font-size:16px;
+  box-shadow:0 0 10px rgba(34,197,94,0.6);
+}
+
+/* MOBILE OPTIMIZATION */
+@media (max-width:768px){
+
+  .label{
+    display:none; /* keep only circles for space */
+  }
+
+  .topTabs{
+    gap:6px;
+  }
+
+}
+
+@media (max-width:768px){
+
+  .label{
+    display:none;
+  }
+
+  .circle{
+    width:18px;
+    height:18px;
+    font-size:10px;
+  }
+
+  .topBar{
+    padding:8px;
+  }
+
+}
+</style>
+</head>
+
+<body>
+
+
+<div class="topBar">
+
+  <div class="topLeft">
+    <span class="appTitle">Inventory</span>
+  </div>
+
+  <div class="topTabs">
+  
+    <div class="step" onclick="switchMainTab('upload', this)">
+      <span class="circle">1</span>
+      <span class="label">Upload</span>
+    </div>
+	
+    <div class="step active" onclick="switchMainTab('scan', this)">
+      <span class="circle">2</span>
+      <span class="label">Scan</span>
+    </div>
+
+    <div class="step" onclick="switchMainTab('filter', this)">
+      <span class="circle">3</span>
+      <span class="label">Filter</span>
+    </div>
+  </div>
+
+  <div class="topRight">
+    <div class="avatar">📦</div>
+  </div>
+
+</div>
+
+<div class="container stickyTop mainTab" id="tab-upload" style="display:none;">
+
+<h3>Upload CSV/Excel</h3>
+
+<div class="fileRow">
+<input type="file" id="fileInput" accept=".xls" style="display:none" onchange="showFileName()">
+<button class="primary" onclick="document.getElementById('fileInput').click()">Choose File</button>
+<button class="success" onclick="uploadFile()">Upload File</button>
+<span id="fileLabel"></span>
+</div>
+
+</div>
+
+
+<div class="container stickyTop mainTab" id="tab-scan">
+
+<h3>Enter Barcode</h3>
+
+<input id="searchInput"
+placeholder="Enter barcode"
+onclick="this.select()"
+oninput="searchBarcode()"
+inputmode="numeric">
+
+<button class="primary" onclick="showAll()">Show All</button>
+<button class="primary" onclick="downloadExcel()">Download Excel</button>
+<button class="danger" onclick="clearAll()">Clear All Data</button>
+
+<div id="noRecord" style="color:red;font-weight:bold;margin-top:8px"></div>
+
+<div class="totalRow">
+Total System: <span id="totalSystem">0</span> |
+Total Actual: <span id="totalActual">0</span>
+</div>
+
+</div>
+
+<div class="container mainTab" id="tab-filter" style="display:none;">
+
+<div style="display:flex; gap:6px; margin-bottom:10px;">
+  <button class="primary" onclick="showTab('all')">All</button>
+  <button class="primary" onclick="showTab('variance')">With Variance</button>
+</div>
+
+</div>
+
+<div class="container">
+
+<h3>Inventory Table</h3>
+
+<div id="tableContainer">
+
+<table id="dataTable">
+
+<thead>
+<tr>
+<th>Barcode</th>
+<th>Description</th>
+<th>System</th>
+<th>Actual</th>
+<th>Variance</th>
+<th>Actions</th>
+</tr>
+</thead>
+
+<tbody></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+<script>
+
+let data=[];
+let filtered=[];
+
+let currentTab = 'all';
+
+function switchMainTab(tab, el){
+
+  document.querySelectorAll('.mainTab').forEach(e=>{
+    e.style.display='none';
+  });
+
+  document.getElementById('tab-' + tab).style.display='block';
+
+  /* ACTIVE STEP */
+  document.querySelectorAll('.step').forEach(s=>{
+    s.classList.remove('active');
+  });
+
+  if(el) el.classList.add('active');
+
+  if(tab === 'scan'){
+    setTimeout(()=>{
+      const input = document.getElementById('searchInput');
+      input.focus();
+      input.select();
+    },200);
+  }
+}
+
+function showTab(type){
+
+currentTab = type;
+
+if(type === 'all'){
+  filtered = data;
+}
+
+if(type === 'variance'){
+  filtered = data.filter(r => (r.actual - r.system) !== 0);
+}
+
+render();
+
+}
+
+function saveLocal(){
+localStorage.setItem('inventoryData',JSON.stringify(data));
+}
+
+function loadLocal(){
+let saved=localStorage.getItem('inventoryData');
+if(saved){
+data=JSON.parse(saved);
+filtered=data;
+render();
+}
+}
+
+function showFileName(){
+const file=document.getElementById('fileInput').files[0];
+if(file){
+document.getElementById('fileLabel').innerText=file.name;
+}
+}
+
+function uploadFile(){
+
+const input=document.getElementById('fileInput');
+const file=input.files[0];
+
+if(!file){
+alert('Please select a file first.');
+return;
+}
+
+if(!file.name.toLowerCase().endsWith('.xls')){
+alert('Only .xls files are allowed.');
+return;
+}
+
+const reader=new FileReader();
+
+reader.onload=function(e){
+
+if(file.name.toLowerCase().endsWith('.csv')){
+
+const rows=e.target.result.split('\n');
+
+data=[];
+
+rows.slice(1).forEach(r=>{
+
+let cols=r.split(',');
+
+if(cols.length>=3){
+
+data.push({
+barcode:cols[0].replace(/"/g,'').trim(),
+description:cols[1].replace(/"/g,'').trim(),
+system:parseFloat(cols[2])||0,
+actual:0
+});
+
+}
+
+});
+
+}
+
+else{
+
+const wb=XLSX.read(e.target.result,{type:'array'});
+
+const sheet=wb.Sheets[wb.SheetNames[0]];
+
+const jsonData=XLSX.utils.sheet_to_json(sheet,{header:1});
+
+data=jsonData.slice(1).map(r=>({
+
+barcode:String(r[0]||'').replace(/"/g,'').trim(),
+description:String(r[1]||'').replace(/"/g,'').trim(),
+system:parseFloat(r[2]||0),
+actual:0
+
+}));
+
+}
+
+filtered=data;
+
+saveLocal();
+
+render();
+
+input.value='';
+document.getElementById('fileLabel').innerText='';
+
+alert('File uploaded successfully');
+
+};
+
+if(file.name.toLowerCase().endsWith('.csv'))
+reader.readAsText(file);
+else
+reader.readAsArrayBuffer(file);
+
+}
+
+function render(){
+
+const tbody=document.querySelector('#dataTable tbody');
+
+tbody.innerHTML='';
+
+let totalSystem=0;
+let totalActual=0;
+
+filtered.forEach((row)=>{
+
+let variance=row.actual-row.system;
+
+let varianceColor='black';
+
+if(variance<0) varianceColor='red';
+if(variance>0) varianceColor='green';
+
+totalSystem+=row.system;
+totalActual+=row.actual;
+
+let tr=document.createElement('tr');
+
+tr.innerHTML=`
+<td>${row.barcode}</td>
+<td style="text-align:left">${row.description}</td>
+<td>${row.system}</td>
+<td>${row.actual}</td>
+<td style="color:${varianceColor};font-weight:bold">${variance}</td>
+<td class="actions">
+<button class="addBtn" onclick="addQtyById('${row.barcode}')">▲</button>
+<button class="lessBtn" onclick="lessQtyById('${row.barcode}')">▼</button>
+<button class="okBtn" onclick="matchQtyById('${row.barcode}')">😊</button>
+</td>
+`;
+
+tbody.appendChild(tr);
+
+});
+
+document.getElementById('totalSystem').innerText=totalSystem;
+document.getElementById('totalActual').innerText=totalActual;
+
+}
+
+function findIndex(barcode){
+  return data.findIndex(d => d.barcode === barcode);
+}
+
+function addQtyById(barcode){
+  let i = findIndex(barcode);
+  if(i > -1){
+    data[i].actual++;
+    beep(900);
+    saveLocal();
+    showTab(currentTab);
+    focusBarcode();
+  }
+}
+
+function lessQtyById(barcode){
+  let i = findIndex(barcode);
+  if(i > -1){
+    data[i].actual--;
+    beep(400);
+    saveLocal();
+    showTab(currentTab);
+    focusBarcode();
+  }
+}
+
+function matchQtyById(barcode){
+  let i = findIndex(barcode);
+  if(i > -1){
+    data[i].actual = data[i].system;
+    beep(1200);
+    saveLocal();
+    showTab(currentTab);
+    focusBarcode();
+  }
+}
+
+function searchBarcode(){
+
+let val=document.getElementById('searchInput').value.replace(/[^0-9]/g,'');
+
+document.getElementById('searchInput').value=val;
+
+if(val===''){
+filtered=data;
+document.getElementById('noRecord').innerText='';
+render();
+return;
+}
+
+filtered=data.filter(d=>d.barcode.includes(val));
+
+document.getElementById('noRecord').innerText=(filtered.length===0)?'No record found':'';
+
+render();
+
+}
+
+function showAll(){
+
+filtered=data;
+
+document.getElementById('searchInput').value='';
+
+document.getElementById('noRecord').innerText='';
+
+render();
+
+}
+
+function addQty(i){
+
+filtered[i].actual++;
+
+beep(900);
+
+saveLocal();
+
+render();
+
+focusBarcode();
+
+}
+
+function lessQty(i){
+
+filtered[i].actual--;
+
+beep(400);
+
+saveLocal();
+
+render();
+
+focusBarcode();
+
+}
+
+function matchQty(i){
+
+filtered[i].actual = filtered[i].system;
+
+beep(1200);
+
+saveLocal();
+
+render();
+
+focusBarcode();
+
+}
+
+function focusBarcode(){
+
+const input=document.getElementById('searchInput');
+
+if(input.value.trim()!==''){
+
+input.focus();
+
+input.select();
+
+input.scrollIntoView({behavior:'smooth',block:'center'});
+
+}
+
+}
+
+function beep(freq){
+
+const ctx=new(window.AudioContext||window.webkitAudioContext)();
+
+const osc=ctx.createOscillator();
+
+osc.type='sine';
+
+osc.frequency.value=freq;
+
+osc.connect(ctx.destination);
+
+osc.start();
+
+osc.stop(ctx.currentTime+0.15);
+
+}
+
+function clearAll(){
+
+if(confirm('Clear ALL inventory data?')){
+
+localStorage.removeItem('inventoryData');
+
+data=[];
+filtered=[];
+
+render();
+
+}
+
+}
+
+function downloadExcel(){
+
+const ws=XLSX.utils.json_to_sheet(
+
+filtered.map(r=>({
+Barcode:r.barcode,
+Description:r.description,
+System:r.system,
+Actual:r.actual,
+Variance:r.actual-r.system
+}))
+
+);
+
+const wb=XLSX.utils.book_new();
+
+XLSX.utils.book_append_sheet(wb,ws,'Inventory');
+
+const now = new Date();
+
+const timestamp =
+now.getFullYear() +
+('-' + String(now.getMonth()+1).padStart(2,'0')) +
+('-' + String(now.getDate()).padStart(2,'0')) + '_' +
+String(now.getHours()).padStart(2,'0') +
+String(now.getMinutes()).padStart(2,'0') +
+String(now.getSeconds()).padStart(2,'0');
+
+XLSX.writeFile(wb, `inventory_adjustment_${timestamp}.xls`);
+
+}
+
+loadLocal();
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./service-worker.js")
+    .then(() => console.log("PWA ready"));
+}
+
+
+</script>
+
+</body>
+</html>
