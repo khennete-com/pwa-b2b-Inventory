@@ -686,23 +686,31 @@ function matchQtyById(barcode){
 
 function searchBarcode(){
 
-let val=document.getElementById('searchInput').value.replace(/[^0-9]/g,'');
+  const input = document.getElementById('searchInput');
 
-document.getElementById('searchInput').value=val;
+  let val = input.value.replace(/[^0-9]/g,'');
 
-if(val===''){
-filtered=data;
-document.getElementById('noRecord').innerText='';
-render();
-return;
-}
+  input.value = val;
 
-filtered=data.filter(d=>d.barcode.includes(val));
+  if(val === ''){
+    filtered = data;
+    document.getElementById('noRecord').innerText = '';
+    render();
+    return;
+  }
 
-document.getElementById('noRecord').innerText=(filtered.length===0)?'No record found':'';
+  // EXACT BARCODE SEARCH (FASTEST)
+  const found = barcodeMap.get(val);
 
-render();
+  if(found){
+    filtered = [found];
+    document.getElementById('noRecord').innerText = '';
+  }else{
+    filtered = [];
+    document.getElementById('noRecord').innerText = 'No record found';
+  }
 
+  render();
 }
 
 function showAll(){
