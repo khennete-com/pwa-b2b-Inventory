@@ -399,8 +399,9 @@ th,td{font-size:10px;padding:4px;}
 <input id="searchInput"
 placeholder="Enter barcode"
 onclick="this.select()"
-oninput="searchBarcode()"
 inputmode="numeric">
+
+<button class="success" onclick="searchBarcode()">Search</button>
 
 <button class="primary" onclick="showAll()">Show All</button>
 <button class="primary" onclick="downloadExcel()">Download Excel</button>
@@ -456,6 +457,7 @@ Total Actual: <span id="totalActual">0</span>
 
 let data=[];
 let filtered=[];
+let barcodeMap = new Map();
 
 let currentTab = 'all';
 
@@ -503,13 +505,32 @@ function saveLocal(){
 localStorage.setItem('inventoryData',JSON.stringify(data));
 }
 
-function loadLocal(){
-let saved=localStorage.getItem('inventoryData');
-if(saved){
-data=JSON.parse(saved);
-filtered=data;
-render();
+function buildBarcodeIndex(){
+
+  barcodeMap.clear();
+
+  data.forEach(item=>{
+    barcodeMap.set(item.barcode, item);
+  });
+
 }
+
+function loadLocal(){
+
+  let saved = localStorage.getItem('inventoryData');
+
+  if(saved){
+
+    data = JSON.parse(saved);
+
+    filtered = data;
+
+    buildBarcodeIndex();
+
+    render();
+
+  }
+
 }
 
 function showFileName(){
@@ -583,6 +604,8 @@ actual:0
 }
 
 filtered=data;
+
+buildBarcodeIndex();
 
 saveLocal();
 
